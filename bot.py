@@ -1,20 +1,33 @@
 import os
+import logging
 
-import discord
+from discord.ext import commands
 from discord import Guild
+from discord.ext.commands.context import Context
 from dotenv import load_dotenv
 
+logging.basicConfig(level=logging.INFO)
 load_dotenv()
+
 TOKEN = os.getenv('DISCORD_TOKEN')
 SERVER_ID = os.getenv('SERVER_ID')
 
-client = discord.Client()
+bot = commands.Bot(command_prefix='$')
 
-@client.event
+@bot.event
 async def on_ready():
-	print(f'{client.user} has connected to Discord!')
+	print(f'Bot {bot.user} is ready for action')
 
-	guild: Guild = discord.utils.get(client.guilds, id=SERVER_ID)
-	
+@bot.command()
+async def echo(ctx: Context, *, msg: str):
+	await ctx.send(msg)
 
-client.run(TOKEN)
+@bot.group()
+async def mc(ctx: Context):
+	pass
+
+@mc.command()
+async def status(ctx: Context):
+	await ctx.send('<status>')
+
+bot.run(TOKEN)
