@@ -17,7 +17,7 @@ VERSION_LAST_CHECK = 'version_last_check'
 UPDATE_FREQ_SEC = 60*60*23
 SCRAPER = cloudscraper.create_scraper(disableCloudflareV1=True, browser='chrome')
 
-def scrap_html_page() -> str:
+def __scrap_html_page() -> str:
 	for i in range(REPEAT_COUNT):
 		if i > 0:
 			logging.info('Waiting before next call...')
@@ -32,16 +32,16 @@ def scrap_html_page() -> str:
 			logging.warning(f'Got bad response - code {code}')
 	logging.error('Could not get page content')
 
-def save_page_to_file(text: BeautifulSoup):
+def __save_page_to_file(text: BeautifulSoup):
 	try:
 		logging.info(f'Saving result to HTML file: {HTML_FILE_PATH}')
 		with open(HTML_FILE_PATH, 'w') as file:
 			file.write(str(text))
-		update_config_field(PAGE_LAST_CHECK, time.time())
+		__update_config_field(PAGE_LAST_CHECK, time.time())
 	except OSError as err:
 		logging.error(f'Could not save HTML file: {err.strerror}')
 
-def load_html() -> BeautifulSoup:
+def __load_html() -> BeautifulSoup:
 	try:
 		logging.info(f'Loading HTML file for reading: {HTML_FILE_PATH}')
 		with open(HTML_FILE_PATH) as file:
@@ -49,7 +49,7 @@ def load_html() -> BeautifulSoup:
 	except FileNotFoundError:
 		logging.error(f'Cannot found HTML file: {HTML_FILE_PATH}')
 
-def load_cache() -> dict:
+def __load_cache() -> dict:
 	try:
 		logging.info(f'Loading cache file for reading: {CACHE_FILE_PATH}')
 		with open(CACHE_FILE_PATH) as file:
@@ -57,7 +57,7 @@ def load_cache() -> dict:
 	except FileNotFoundError:
 		logging.error(f'Cannot found cache file: {CACHE_FILE_PATH}')
 
-def save_cache(cache: dict):
+def __save_cache(cache: dict):
 	try:
 		logging.info(f'Loading cache file for writing: {CACHE_FILE_PATH}')
 		with open(CACHE_FILE_PATH, 'w') as file:
@@ -66,17 +66,17 @@ def save_cache(cache: dict):
 	except OSError as err:
 		logging.error(f'Could not save cache file: {err.strerror}')
 
-def update_config_field(name: str, value: str):
+def __update_config_field(name: str, value: str):
 	cache = {}
 	if os.path.exists(CACHE_FILE_PATH):
 		logging.info(f'Cache file found, will be modified: {CACHE_FILE_PATH}')
-		cache = load_cache()
+		cache = __load_cache()
 	else:
 		logging.info(f'Cache file not found, will be created: {CACHE_FILE_PATH}')
 	cache[name] = value
-	save_cache(cache)
+	__save_cache(cache)
 
-def should_rescrap_page() -> bool:
+def __should_rescrap_page() -> bool:
 	logging.info('Checking if page should be rescraped...')
 	if not os.path.exists(CACHE_FILE_PATH):
 		logging.info('Cache file found, so yes')
@@ -84,7 +84,7 @@ def should_rescrap_page() -> bool:
 	if not os.path.exists(HTML_FILE_PATH):
 		logging.info('HTML file found, so yes')
 		return True
-	cache = load_cache()
+	cache = __load_cache()
 	refresh_time_elapsed = cache[PAGE_LAST_CHECK] + UPDATE_FREQ_SEC < time.time()
 	if refresh_time_elapsed:
 		logging.info('Refresh time passed, so yes')
@@ -95,16 +95,16 @@ def should_rescrap_page() -> bool:
 def find_server_version_number(page: BeautifulSoup):
 	page.select_one()
 
-def get_page():
-	if should_rescrap_page():
-		html = scrap_html_page()
-		save_page_to_file(html)
+def __get_page(force: bool):
+	if force or __should_rescrap_page():
+		html = __scrap_html_page()
+		__save_page_to_file(html)
 	else:
-		html = load_html()
+		html = __load_html()
 	return html
 
-def check_latest_version() -> tuple[str, str]:
-	page = get_page()
+def check_latest_version(force: bool) -> tuple[str, str]:
+	page = __get_page(force)
 	server_section = page.find(string=MODPACK_SERVER_SECTION_NAME)
 	if server_section:
 		logging.info(f'Found "{MODPACK_SERVER_SECTION_NAME}" element')
@@ -117,7 +117,7 @@ def check_latest_version() -> tuple[str, str]:
 			version = re.search(r'\d+\.\d+\.\d+', full_name).group()
 			if version:
 				logging.info(f'Version number is: {version}')
-				update_config_field(VERSION_LAST_CHECK, version)
+				__update_config_field(VERSION_LAST_CHECK, version)
 				return (version, link_addr)
 			else:
 				logging.error('Version number not found')
@@ -126,10 +126,10 @@ def check_latest_version() -> tuple[str, str]:
 	else:
 		logging.error('Section with server name not found')
 
-def download_server():
-	version, link = check_latest_version()
+def download_server(force: bool):
+	version, link = check_latest_version(force)
 	server_filename = SERVER_FILE_PATH_TEMPLATE.replace('{version}', version)
-	if os.path.exists(server_filename):
+	if not force and os.path.exists(server_filename):
 		logging.warning(f'Server file already exists: {server_filename}')
 		return
 	link = BASE_URL + link.replace('/files/', '/download/') + '/file'
