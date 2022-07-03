@@ -1,4 +1,4 @@
-import os, logging, json
+import logging, json
 from dotenv import load_dotenv
 from lib.scraper import Scraper
 
@@ -15,5 +15,5 @@ except FileNotFoundError:
 	raise
 
 scraper = Scraper(CONFIG)
-ver, link = scraper.check_latest_version(CONFIG['modpacks'][0])
-print(ver, link)
+ver = scraper.check_latest_version(CONFIG['modpacks'][0])
+print(ver)

@@ -26,7 +26,7 @@ class Scraper:
 			code = response.status_code
 			if code == 200:
 				logging.info('Got OK response')
-				return BeautifulSoup(response.text)
+				return BeautifulSoup(response.text, features='lxml')
 			else:
 				logging.warning(f'Got bad response - code {code}')
 				return None
@@ -37,7 +37,11 @@ class Scraper:
 		if not self.cache.check_modpack_cache_exists(codename):
 			logging.info('Cache not found, so yes')
 			return True
-		refresh_time_elapsed = self.cache.read_field(f'modpacks.{codename}.save-time') + UPDATE_FREQ_SEC < time.time()
+		save_time = self.cache.read_field(f'modpacks.{codename}.save-time')
+		if save_time is None:
+			logging.info('Save time not found, so yes')
+			return True
+		refresh_time_elapsed = save_time + UPDATE_FREQ_SEC < time.time()
 		if refresh_time_elapsed:
 			logging.info('Refresh time passed, so yes')
 			return True
@@ -54,7 +58,7 @@ class Scraper:
 			html = self.cache.load_html(codename)
 		return html
 
-	def check_latest_version(self, modpack: dict, force: bool = False) -> tuple[str, str]:
+	def check_latest_version(self, modpack: dict, force: bool = False) -> str:
 		page = self.__get_modpack_page(modpack, force)
 		server_section = page.find(string=self.config['server-section-name'])
 		if server_section:
@@ -72,7 +76,7 @@ class Scraper:
 					self.cache.write_field(f'modpacks.{codename}.version', version)
 					self.cache.write_field(f'modpacks.{codename}.download_url', link_addr)
 					self.cache.write_field(f'modpacks.{codename}.file_title', full_name)
-					return (version, link_addr)
+					return version
 				else:
 					logging.error('Version number not found')
 			else:

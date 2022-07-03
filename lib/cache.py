@@ -1,12 +1,15 @@
 from weakref import KeyedRef
 from bs4 import BeautifulSoup
+from threading import Timer, currentThread
 import time, logging, json, os
 
 HTML_FILE_PATH = './cache/{name}.html'
 CACHE_FILE_PATH = './cache/cache.json'
+SAVE_TIMER_DELAY = 2
 
 class Cache:
   def __init__(self):
+    self.save_timer = None
     try:
       self.cache = self.__load_cache()
     except FileNotFoundError:
@@ -31,6 +34,10 @@ class Cache:
       logging.error(f'Could not save cache file: {err.strerror}')
 
   def write_field(self, key: str, value: str):
+    logging.info(f'Saving field to cache: {key}: {value}')
+    if (type(self.save_timer) is Timer):
+      logging.info('Save timer set, cancelling...')
+      self.save_timer.cancel()
     key_parts = key.split('.')
     parts_len = len(key_parts)
     current = self.cache
@@ -38,27 +45,30 @@ class Cache:
       if current is None:
         current = {}
       if i < parts_len - 1:
-        current[part] = {}
+        if part not in current:
+          current[part] = {}
         current = current[part]
       else:
         current[part] = value
-    self.__save_cache()
+    logging.info(f'Schedule cache save in {SAVE_TIMER_DELAY} seconds')
+    self.save_timer = Timer(SAVE_TIMER_DELAY, self.__save_cache)
+    self.save_timer.start()
 
   def read_field(self, key: str):
     key_parts = key.split('.')
     parts_len = len(key_parts)
     current = self.cache
     for i, part in enumerate(key_parts):
-      if i < parts_len - 1:
-        if type(current) is dict:
-          try:
+      try:
+        if i < parts_len - 1:
+          if type(current) is dict:
             current = current[part]
-          except KeyError:
+          else:
             return None
         else:
-          return None
-      else:
-        return current[part]
+          return current[part]
+      except KeyError:
+        return None
 
   def save_html(self, codename: str, text: BeautifulSoup):
     try:
@@ -75,7 +85,7 @@ class Cache:
       path = HTML_FILE_PATH.replace('{name}', codename)
       logging.info(f'Loading HTML file for reading: {path}')
       with open(path) as file:
-        return (BeautifulSoup(file), self.read_field(f'modpacks.{codename}'))
+        return BeautifulSoup(file, features='lxml')
     except FileNotFoundError:
       logging.error(f'Cannot found HTML file: {path}')
       raise
