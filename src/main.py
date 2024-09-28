@@ -1,11 +1,12 @@
-import logging, json
+import logging, json, os
 from dotenv import load_dotenv
-from lib.scraper import Scraper
+from lib import bot
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
-CONFIG_FILE_PATH = './config/config.json'
+CONFIG_FILE_PATH = os.path.dirname(__file__) + '/config.json'
+print(CONFIG_FILE_PATH)
 
 try:
 	logging.info(f'Loading config file for reading: {CONFIG_FILE_PATH}')
@@ -15,6 +16,4 @@ except FileNotFoundError:
 	logging.error(f'Cannot found config file: {CONFIG_FILE_PATH}')
 	raise
 
-scraper = Scraper(CONFIG)
-# ver = scraper.check_latest_version(CONFIG['modpacks'][0])
-scraper.download_latest_modpack(CONFIG['modpacks'][0])
+bot.run()
