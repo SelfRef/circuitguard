@@ -1,5 +1,7 @@
 import os
+from dotenv import load_dotenv
 import requests
+load_dotenv()
 
 craftyapi = os.getenv('CRAFTY_API')
 
@@ -23,9 +25,17 @@ def refresh_token():
 	login = requests.post(craftyapi + 'auth/login', json=logindata).json()
 	if login['status'] == 'ok':
 		global token
-		token = login['token']
+		token = login['data']['token']
+
+def ensure_token_valid():
+	if token is None or not check_token_valid():
+		refresh_token()
+
+def get_server_stats(id: int):
+	return requests.get(craftyapi + f'servers/{id}/stats', headers=get_headers()).json()['data']
 
 def get_servers() -> list:
+	ensure_token_valid()
 	servers = requests.get(craftyapi + 'servers', headers=get_headers())
 	server_data = servers.json()['data']
 	server_list = []
@@ -41,6 +51,3 @@ def get_servers() -> list:
 			'players': stats['players'],
 		})
 	return sorted(server_list, key=lambda s: s['name'])
-
-def get_server_stats(id: int):
-	return requests.get(craftyapi + f'servers/{id}/stats', headers=get_headers()).json()['data']

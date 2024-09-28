@@ -3,6 +3,7 @@ import os
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context, CommandNotFound
+from dotenv import load_dotenv
 from lib.crafty import get_servers
 
 def run():
