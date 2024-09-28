@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: techguard:$(date +%s)
+  IMAGE_NAME: techguard
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3.3.0
         with:
