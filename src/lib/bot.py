@@ -3,7 +3,6 @@ import os
 import discord
 from discord.ext import commands
 from discord.ext.commands import Context, CommandNotFound
-from dotenv import load_dotenv
 from lib.crafty import get_servers
 
 def run():
@@ -20,6 +19,7 @@ def run():
 			return await super().on_command_error(context, exception)
 
 	bot = MyBot(command_prefix='?', intents=intents)
+	bot.case_insensitive = True
 
 	@bot.command()
 	async def echo(ctx: Context, text: str):
@@ -50,4 +50,3 @@ def run():
 		await ctx.send(message)
 
 	bot.run(token)
-
