@@ -2,6 +2,7 @@ import json
 import os
 import time
 from tokenize import group
+from attr import has
 from audioop import add
 import discord
 from discord import app_commands
@@ -134,7 +135,14 @@ class Bot:
 				await interaction.response.send_message('❌ You need to set your Minecraft player name first using /mcadmin setplayername command.')
 				return
 			playername = whitelist[discord_id]
-			self.crafty.send_command(server_number, f'whitelist add {playername}')
+			try:
+				self.crafty.send_command(server_number, f'whitelist add {playername}')
+			except ValueError:
+				await interaction.response.send_message(f'❌ Invalid server number: {server_number}. Check /mc servers command for available servers.')
+				return
+			except Exception as e:
+				await interaction.response.send_message(f'❌ Failed to add **{playername}** to S{server_number} whitelist: {e}')
+				return
 			time.sleep(1)
 			logs = self.crafty.get_logs(server_number)
 			status = logs[-1] if logs else ''
@@ -143,25 +151,41 @@ class Bot:
 
 		@mcadmin.command()
 		@app_commands.check(self._admin_commands)
-		async def whitelist(interaction: discord.Interaction, key: int):
+		async def whitelist(interaction: discord.Interaction, server_number: int):
 			'''Lists all users in the whitelist'''
-			response = self.crafty.send_command(key, 'whitelist list')
-			logs = self.crafty.get_logs(key)
+			try:
+				response = self.crafty.send_command(server_number, 'whitelist list')
+			except ValueError:
+				await interaction.response.send_message(f'❌ Invalid server number: {server_number}. Check /mc servers command for available servers.')
+				return
+			except Exception as e:
+				await interaction.response.send_message(f'❌ Failed to retrieve whitelist for S{server_number}: {e}')
+				return
+			time.sleep(1)
+			logs = self.crafty.get_logs(server_number)
 			status = logs[-1] if logs else "No logs available"
 
 			await interaction.response.send_message(status, ephemeral=True)
 
 		@mcadmin.command()
 		@app_commands.check(self._admin_commands)
-		async def logs(interaction: discord.Interaction, key: int):
+		async def logs(interaction: discord.Interaction, server_number: int):
 			'''Fetches the latest server logs'''
-			logs = self.crafty.get_logs(key)
+			try:
+				logs = self.crafty.get_logs(server_number)
+			except ValueError:
+				await interaction.response.send_message(f'❌ Invalid server number: {server_number}. Check /mc servers command for available servers.')
+				return
+			except Exception as e:
+				await interaction.response.send_message(f'❌ Failed to retrieve logs for S{server_number}: {e}')
+				return
 
 			if not logs:
 				await interaction.response.send_message('No logs available.', ephemeral=True)
 				return
 
-			await interaction.response.send_message('\n'.join(logs), ephemeral=True)
+			last_logs = logs[-20:] if len(logs) > 20 else logs
+			await interaction.response.send_message('\n'.join(last_logs), ephemeral=True)
 
 		@mcadmin.error
 		async def setplayername_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
@@ -170,11 +194,11 @@ class Bot:
 			else:
 				await interaction.response.send_message(f'❌ An error occurred: {error}')
 
-	def _admin_commands(self, interaction):
+	def _admin_commands(self, interaction: discord.Interaction):
 		if interaction.guild is None:
 			return self.bot.is_owner(interaction.user)
 		else:
-			return interaction.user.has_role('Admin')
+			return any(role.name == 'Admin' for role in interaction.user.roles)
 
 	def run(self):
 		self.bot.run(self.token)
