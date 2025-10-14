@@ -4,5 +4,6 @@ cache/
 .env
 *.html
 *.zip
+config.json
 
 !.gitkeep
