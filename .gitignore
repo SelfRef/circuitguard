@@ -1,9 +1,10 @@
 __pycache__/
-cache/
+*.py[cod]
 .venv/
 .env
-*.html
-*.zip
-config.json
-
-!.gitkeep
+*.db
+*.db-*
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
