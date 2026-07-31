@@ -74,6 +74,42 @@ async def test_server_error_raises(client: CraftyClient) -> None:
 
 
 @respx.mock
+async def test_read_file(client: CraftyClient) -> None:
+    respx.get(f"{BASE}/api/v2/servers/id-1").respond(
+        200, json={"status": "ok", "data": {"path": "/srv/servers/id-1"}}
+    )
+    route = respx.post(f"{BASE}/api/v2/servers/id-1/files").respond(
+        200, json={"status": "ok", "data": {"content": '[{"name": "Steve"}]'}}
+    )
+    content = await client.read_file("id-1", "ops.json")
+    assert content == '[{"name": "Steve"}]'
+    assert route.calls.last.request.content == b'{"path":"/srv/servers/id-1/ops.json"}'
+
+
+@respx.mock
+async def test_read_file_plain_data(client: CraftyClient) -> None:
+    respx.get(f"{BASE}/api/v2/servers/id-1").respond(
+        200, json={"status": "ok", "data": {"path": "/srv/servers/id-1"}}
+    )
+    respx.post(f"{BASE}/api/v2/servers/id-1/files").respond(
+        200, json={"status": "ok", "data": "raw file text"}
+    )
+    assert await client.read_file("id-1", "ops.json") == "raw file text"
+
+
+@respx.mock
+async def test_read_file_error_raises(client: CraftyClient) -> None:
+    respx.get(f"{BASE}/api/v2/servers/id-1").respond(
+        200, json={"status": "ok", "data": {"path": "/srv/servers/id-1"}}
+    )
+    respx.post(f"{BASE}/api/v2/servers/id-1/files").respond(
+        200, json={"status": "error", "error": "NOT_FOUND"}
+    )
+    with pytest.raises(CraftyUnavailable):
+        await client.read_file("id-1", "ops.json")
+
+
+@respx.mock
 async def test_power_action_url(client: CraftyClient) -> None:
     route = respx.post(f"{BASE}/api/v2/servers/id-1/action/restart_server").respond(
         200, json={"status": "ok"}

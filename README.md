@@ -4,18 +4,24 @@ Discord bot for managing Minecraft servers running under [Crafty Controller](htt
 
 ## Commands
 
+Commands are split into two top-level groups: `/mc` for everyone, and `/mcmod` for moderation. `/mcmod` is hidden from members without the **Manage Server** permission by default — to make it visible to your mod roles instead, grant them access in **Server Settings → Integrations → CircuitGuard → /mcmod**. Visibility is cosmetic; the bot enforces the configured role IDs at runtime either way.
+
 | Command | Who | What |
 |---|---|---|
 | `/mc servers` | everyone | Status, version and online players for all servers |
-| `/mc link username:` | everyone | Link your Minecraft username (validated against Mojang) to your Discord account |
-| `/mc whitelist add server: [player:]` | everyone (self) / mod (any player) | Whitelist yourself (after `/mc link`), or any player if you moderate the server |
-| `/mc whitelist remove server: player:` | mod | Remove a player from the whitelist |
+| `/mc whitelist me server: [username:]` | everyone | Whitelist yourself — provide `username` the first time (validated against Mojang) and it's remembered for next time |
 | `/mc whitelist list server:` | everyone | Show the whitelist (ephemeral) |
-| `/mc server start\|stop\|restart server:` | mod | Power actions via Crafty |
-| `/mc server backup server:` | mod | Trigger a Crafty backup |
-| `/mc server command server: command:` | mod | Run any console command (response is ephemeral, everything is audit-logged) |
+| `/mcmod whitelist add server: player:` | mod | Add any player to the whitelist |
+| `/mcmod whitelist remove server: player:` | mod | Remove a player from the whitelist |
+| `/mcmod server start\|stop\|restart server:` | mod | Power actions via Crafty |
+| `/mcmod server backup server:` | mod | Trigger a Crafty backup |
+| `/mcmod server command server: command:` | mod | Run any console command (response is ephemeral, everything is audit-logged) |
+| `/mcmod server gamerule server: rule: [value:]` | mod | Read a gamerule (omit `value`) or set it — rule names and boolean values autocomplete |
+| `/mcmod op add server: player:` | mod | Grant operator status — `player` autocompletes from the server's whitelist |
+| `/mcmod op remove server: player:` | mod | Revoke operator status — `player` autocompletes from the current operators |
+| `/mcmod op list server:` | mod | Show a server's operators with their permission levels (read from `ops.json` via the Crafty file API) |
 
-Permissions: users with a role listed in `ADMIN_ROLE_IDS` can do everything on every server. Each server's `mod_role_ids` (or the global `MOD_ROLE_IDS` for auto-detected servers) grants mod access. Everyone else can view status and whitelist their own single linked username.
+Permissions: users with a role listed in `ADMIN_ROLE_IDS` can do everything on every server. Each server's `mod_role_ids` (or the global `MOD_ROLE_IDS` for auto-detected servers) grants mod access. Everyone else can view status and whitelist their own single remembered username.
 
 All state-changing actions are recorded in an audit log (SQLite, `/data`).
 

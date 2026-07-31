@@ -63,19 +63,29 @@ class CircuitGuardBot(commands.Bot):
             except CraftyUnavailable:
                 log.warning("Starting without a server list — will retry on first command")
 
-        from circuitguard.commands.servers import McGroup, ServerGroup
-        from circuitguard.commands.whitelist import WhitelistGroup, make_link_command
+        from circuitguard.commands.ops import OpGroup
+        from circuitguard.commands.servers import McGroup, McModGroup, ServerGroup
+        from circuitguard.commands.whitelist import ModWhitelistGroup, WhitelistGroup
 
         mc = McGroup(self)
-        mc.add_command(ServerGroup(self))
         mc.add_command(WhitelistGroup(self))
-        mc.add_command(make_link_command(self))
         self.tree.add_command(mc)
+
+        mod = McModGroup(self)
+        mod.add_command(ServerGroup(self))
+        mod.add_command(ModWhitelistGroup(self))
+        mod.add_command(OpGroup(self))
+        self.tree.add_command(mod)
 
         if self.settings.discord_guild_id is not None:
             guild = discord.Object(id=self.settings.discord_guild_id)
             self.tree.copy_global_to(guild=guild)
             await self.tree.sync(guild=guild)
+            # In guild mode, wipe the global scope — anything there (e.g. commands
+            # from an earlier global sync or an old bot version) would show up in
+            # Discord as duplicates next to the guild-scoped set.
+            self.tree.clear_commands(guild=None)
+            await self.tree.sync()
             log.info("Commands synced to guild %d", self.settings.discord_guild_id)
         else:
             await self.tree.sync()
@@ -159,7 +169,10 @@ class CircuitGuardBot(commands.Bot):
             case ServerNotFound(label=label):
                 return f"❓ Unknown server **{label}** — pick one from the autocomplete list."
             case NotLinkedError():
-                return "🔗 Link your Minecraft username first with `/mc link`, then try again."
+                return (
+                    "🔗 I don't know your Minecraft username yet — run the command again "
+                    "with the `username` option filled in, and I'll remember it."
+                )
             case InvalidUsername(username=username):
                 return (
                     f"❌ **{username}** is not a valid Minecraft username "

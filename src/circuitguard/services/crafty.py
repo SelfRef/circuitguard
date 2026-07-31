@@ -68,10 +68,15 @@ class CraftyClient:
         await self._client.aclose()
 
     async def _request(
-        self, method: str, path: str, *, content: str | None = None
+        self,
+        method: str,
+        path: str,
+        *,
+        content: str | None = None,
+        json: dict[str, object] | None = None,
     ) -> dict[str, object]:
         try:
-            response = await self._client.request(method, path, content=content)
+            response = await self._client.request(method, path, content=content, json=json)
             response.raise_for_status()
         except httpx.HTTPError as exc:
             raise CraftyUnavailable(f"Crafty request failed: {exc}") from exc
@@ -116,6 +121,26 @@ class CraftyClient:
 
     async def power_action(self, server_id: str, action: PowerAction) -> None:
         await self._request("POST", f"/api/v2/servers/{server_id}/action/{action.value}")
+
+    async def get_server_root(self, server_id: str) -> str:
+        """Filesystem path of the server's directory on the Crafty host."""
+        payload = await self._request("GET", f"/api/v2/servers/{server_id}")
+        data = payload.get("data")
+        assert isinstance(data, dict)
+        return str(data["path"])
+
+    async def read_file(self, server_id: str, relative_path: str) -> str:
+        """Read a text file from the server's directory via the Crafty file API."""
+        root = await self.get_server_root(server_id)
+        payload = await self._request(
+            "POST",
+            f"/api/v2/servers/{server_id}/files",
+            json={"path": f"{root}/{relative_path}"},
+        )
+        data = payload.get("data")
+        if isinstance(data, dict):
+            return str(data.get("content") or "")
+        return str(data or "")
 
     async def send_stdin(self, server_id: str, command: str) -> None:
         """Send a console command to the server process; produces no command output."""
